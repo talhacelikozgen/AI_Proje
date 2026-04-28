@@ -102,6 +102,7 @@
 
         async function loadHistory() {
             const grid = document.getElementById('historyGrid');
+            promptsCache = null; // Cache'i sıfırla, en güncel veriyi al
             
             try {
                 const response = await fetch(`${API_BASE}/history/${encodeURIComponent(USERNAME)}`);
@@ -123,30 +124,55 @@
             }
         }
 
+        let promptsCache = null;
+
+        async function getPromptsDict() {
+            if (promptsCache) return promptsCache;
+            try {
+                const response = await fetch(`${API_BASE}/outputs/${encodeURIComponent(USERNAME)}/prompt.json`);
+                promptsCache = await response.json();
+                return promptsCache;
+            } catch(e) {
+                return {};
+            }
+        }
+
+        async function getPromptFromJson(imgName) {
+            const prompts = await getPromptsDict();
+            return prompts[imgName] || "Prompt bulunamadı";
+        }
+
         function showNextBatch() {
             const grid = document.getElementById('historyGrid');
             const seeMoreContainer = document.getElementById('seeMoreContainer');
             
             const nextBatch = allImages.slice(currentIndex, currentIndex + batchSize);
             
-            nextBatch.forEach(imgName => {
+            nextBatch.forEach(async imgName => {
                 const card = document.createElement('div');
                 card.className = "glass-panel p-3 rounded-2xl transition-transform hover:scale-[1.02]";
                 
-                // Saati ayıkla (dragon-HHMMSS.png formatından)
+                // Saati ayıkla (dragon-YYYY-MM-DD-HHMMSS.png formatından)
                 const timePart = imgName.replace('dragon-', '').replace('.png', '') || "000000";
-                const formattedTime = `${timePart.substring(0,2)}:${timePart.substring(2,4)}:${timePart.substring(4,6)}`;
+                const formattedTime = `${timePart.substring(11,13)}:${timePart.substring(13,15)}:${timePart.substring(15,17)}`;
+                const dateStr = timePart.substring(0, 10);
+
+                // Prompt'u JSON'dan çek
+                const prompt = await getPromptFromJson(imgName);
 
                 card.innerHTML = `
                     <div class="overflow-hidden rounded-xl mb-3 aspect-square bg-slate-900">
                         <img src="${API_BASE}/outputs/${encodeURIComponent(USERNAME)}/${imgName}" 
-                             class="w-full h-full object-cover" 
+                             class="w-full h-full object-cover cursor-pointer" 
                              alt="Dragon Output"
                              onclick="window.open(this.src, '_blank')">
                     </div>
-                    <div class="flex justify-between items-center px-1">
-                        <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${imgName}</span>
-                        <span class="text-xs font-bold text-purple-400">${formattedTime}</span>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-[10px] text-slate-500 font-mono">${dateStr}</span>
+                            <span class="text-xs font-bold text-purple-400">${formattedTime}</span>
+                        </div>
+                        <p class="text-xs text-slate-300 px-1 line-clamp-2">${prompt}</p>
                     </div>
                 `;
                 grid.appendChild(card);

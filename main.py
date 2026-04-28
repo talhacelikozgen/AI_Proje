@@ -1,6 +1,7 @@
 import torch
 import os
 import datetime
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -102,11 +103,28 @@ async def generate(request: GenRequest):
             height=1024
         ).images[0]
         
-        timestamp = datetime.datetime.now().strftime("%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")
         filename = f"dragon-{timestamp}.png"
         save_path = os.path.join(USER_DIR, filename)
         
         image.save(save_path)
+        
+        # prompt.json dosyasına prompt'u kaydet
+        prompt_json_path = os.path.join(USER_DIR, "prompt.json")
+        
+        # Mevcut prompt'ları oku veya yeni dict oluştur
+        if os.path.exists(prompt_json_path):
+            with open(prompt_json_path, 'r', encoding='utf-8') as f:
+                prompts_dict = json.load(f)
+        else:
+            prompts_dict = {}
+        
+        # Yeni prompt'u ekle
+        prompts_dict[filename] = request.prompt
+        
+        # Dosyaya yaz
+        with open(prompt_json_path, 'w', encoding='utf-8') as f:
+            json.dump(prompts_dict, f, ensure_ascii=False, indent=2)
         
         return {"image_url": f"https://talhacell.taila77dbf.ts.net/outputs/Talha%20Celik/{filename}"}
     except Exception as e:
