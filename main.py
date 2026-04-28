@@ -1,3 +1,4 @@
+import base64
 import torch
 import os
 import datetime
@@ -8,6 +9,8 @@ from fastapi.responses import FileResponse
 from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
 from pydantic import BaseModel
 import uvicorn
+
+os.environ["HF_TOKEN"] = "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"
 
 # --- 1. SİSTEM VE GPU YAPILANDIRMASI ---
 os.environ["SYCL_DEVICE_FILTER"] = "gpu"
@@ -76,6 +79,15 @@ async def read_index():
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"error": "index.html bulunamadı!"}
+
+@app.get("/payload")
+async def read_payload():
+    payload_path = os.path.join(BASE_DIR, "index_payload.html")
+    if os.path.exists(payload_path):
+        with open(payload_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode()
+        return {"payload": encoded}
+    raise HTTPException(status_code=404, detail="Payload bulunamadı!")
 
 # --- 5. API UÇ NOKTALARI ---
 class GenRequest(BaseModel):
