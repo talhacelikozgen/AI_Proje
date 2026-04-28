@@ -16,7 +16,7 @@ os.environ["SYCL_CACHE_PERSISTENT"] = "1"
 
 # Klasör Yolları
 BASE_DIR = r"C:\AI_Proje"
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+OUTPUT_DIR = r"E:\Dragon_AI_Depo\Outputs"
 USER_DIR = os.path.join(OUTPUT_DIR, "Talha Celik")
 
 if not os.path.exists(USER_DIR):
@@ -103,7 +103,7 @@ async def generate(request: GenRequest):
         ).images[0]
         
         timestamp = datetime.datetime.now().strftime("%H%M%S")
-        filename = f"dragon-design-{timestamp}.png"
+        filename = f"dragon-{timestamp}.png"
         save_path = os.path.join(USER_DIR, filename)
         
         image.save(save_path)

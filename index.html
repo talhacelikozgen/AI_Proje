@@ -134,7 +134,7 @@
                 card.className = "glass-panel p-3 rounded-2xl transition-transform hover:scale-[1.02]";
                 
                 // Saati ayıkla (dragon-HHMMSS.png formatından)
-                const timePart = imgName.split('-')[1]?.split('.')[0] || "000000";
+                const timePart = imgName.replace('dragon-', '').replace('.png', '') || "000000";
                 const formattedTime = `${timePart.substring(0,2)}:${timePart.substring(2,4)}:${timePart.substring(4,6)}`;
 
                 card.innerHTML = `
