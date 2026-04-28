@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionXLPipeline, EulerAncestralDiscreteScheduler
 from pydantic import BaseModel
 import uvicorn
 
@@ -22,50 +22,62 @@ USER_DIR = os.path.join(OUTPUT_DIR, "Talha Celik")
 if not os.path.exists(USER_DIR):
     os.makedirs(USER_DIR)
 
-# --- 2. MODEL YÜKLEME (DOĞRU SIRALAMA) ---
-print("Dragon AI: Intel XPU Hazırlanıyor...")
-model_id = "runwayml/stable-diffusion-v1-5"
+# --- 2. BÜYÜK MODEL YÜKLEME (SDXL - TASARIM ODAKLI) ---
+print("Dragon AI v3: SDXL Modeli Hazırlanıyor...")
+# Tasarım ve konsept sanatı için en temiz temel model
+model_id = "stabilityai/stable-diffusion-xl-base-1.0"
 pipe = None
 
 try:
+    # Intel GPU (XPU) kontrolü
     if torch.xpu.is_available():
         print(f"UR Katmanı Doğrulandı: {torch.xpu.get_device_name(0)} aktif.")
-        # Modeli önce RAM'e al, sonra XPU'ya taşı
-        pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+        
+        # SDXL Pipeline yükleme (12GB VRAM için FP16 ve Safetensors kullanımı)
+        pipe = StableDiffusionXLPipeline.from_pretrained(
+            model_id, 
+            torch_dtype=torch.float16, 
+            variant="fp16", 
+            use_safetensors=True
+        )
+        
+        # Tasarım odaklı (çizim gibi) sonuçlar için Scheduler ayarı
+        pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+        
+        # Modeli GPU'ya (XPU) taşı
         pipe = pipe.to("xpu")
-        print("Model Intel XPU (GPU) üzerine başarıyla yerleşti!")
+        
+        # 12GB VRAM'in tıkanmaması için bellek yönetimi
+        pipe.enable_attention_slicing()
+        
+        print("Büyük Tasarım Modeli (SDXL) XPU üzerine başarıyla yerleşti!")
     else:
-        print("HATA: GPU bulundu ama Unified Runtime (UR) bağlantısı kurulamadı.")
+        print("HATA: GPU bulundu ama XPU katmanı aktif değil.")
 except Exception as e:
     print(f"Model Yükleme Hatası: {e}")
 
-# --- 3. API SUNUCUSU (FASTAPI) ---
-app = FastAPI(title="Dragon AI v2 Backend")
+# --- 3. API SUNUCUSU ---
+app = FastAPI(title="Dragon AI v3 Backend")
 
-# Web arayüzünün (GitHub/Domain) bağlanabilmesi için izinler
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Tüm dış kaynaklardan gelen isteklere izin ver
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- 4. STATİK DOSYA VE ANA SAYFA YÖNETİMİ ---
-
-# Görselleri /outputs yoluyla dışarı aç
+# --- 4. STATİK DOSYALAR ---
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
 
 @app.get("/")
 async def read_index():
-    """Tarayıcıya doğrudan index.html dosyasını gönderir."""
     index_path = os.path.join(BASE_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"error": f"index.html dosyası {BASE_DIR} adresinde bulunamadı!"}
+    return {"error": "index.html bulunamadı!"}
 
 # --- 5. API UÇ NOKTALARI ---
-
 class GenRequest(BaseModel):
     prompt: str
     user: str
@@ -73,20 +85,29 @@ class GenRequest(BaseModel):
 @app.post("/generate")
 async def generate(request: GenRequest):
     if pipe is None:
-        raise HTTPException(status_code=500, detail="Model henüz yüklenmedi veya GPU hatası mevcut.")
+        raise HTTPException(status_code=500, detail="Model yüklenemedi.")
     
     try:
-        # Görsel üretimi (Intel GPU üzerinde)
-        image = pipe(request.prompt).images[0]
+        # TASARIM ODAKLI PROMPT (Otomatik oyun konsepti stili)
+        design_prompt = f"{request.prompt}, game concept art, digital illustration, clean lines, high quality, stylized art, artstation trending"
+        negative_prompt = "photorealistic, realistic, photography, blurry, messy, distorted, grainy, low quality"
+
+        # Görsel üretimi (SDXL 1024x1024)
+        image = pipe(
+            prompt=design_prompt,
+            negative_prompt=negative_prompt,
+            num_inference_steps=30, # Adım sayısını kalite için 30 yaptık
+            guidance_scale=8.0,
+            width=1024,
+            height=1024
+        ).images[0]
         
-        # İsimlendirme: dragon-HHMMSS.png
         timestamp = datetime.datetime.now().strftime("%H%M%S")
-        filename = f"dragon-{timestamp}.png"
+        filename = f"dragon-design-{timestamp}.png"
         save_path = os.path.join(USER_DIR, filename)
         
         image.save(save_path)
         
-        # main.py içindeki return satırı şöyle olmalı:
         return {"image_url": f"https://talhacell.taila77dbf.ts.net/outputs/Talha%20Celik/{filename}"}
     except Exception as e:
         print(f"Üretim Hatası: {e}")
@@ -94,14 +115,10 @@ async def generate(request: GenRequest):
 
 @app.get("/history/{username}")
 async def get_history(username: str):
-    """Kullanıcının geçmiş görsellerini listeler."""
     if os.path.exists(USER_DIR):
-        # Sadece resim dosyalarını al ve tarihe göre (isme göre) sırala
         files = [f for f in os.listdir(USER_DIR) if f.lower().endswith(".png")]
         return sorted(files, reverse=True)
     return []
 
-# --- 6. SUNUCUYU BAŞLAT ---
 if __name__ == "__main__":
-    # Host 0.0.0.0: Hem yerel ağdan hem Tailscale'den erişim sağlar
     uvicorn.run(app, host="0.0.0.0", port=8000)
