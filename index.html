@@ -79,6 +79,12 @@
 
                 <div id="historyGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto max-h-[70vh] pr-2">
                     </div>
+
+                <div id="seeMoreContainer" class="text-center mt-6 hidden">
+                    <button onclick="loadMore()" id="seeMoreBtn" class="dragon-gradient px-6 py-3 rounded-2xl font-bold hover:scale-[1.02] transition-all active:scale-95 shadow-lg shadow-purple-500/20">
+                        DAHA FAZLA GÖRSEL GÖSTER
+                    </button>
+                </div>
             </div>
 
         </div>
@@ -87,6 +93,9 @@
     <script>
         const API_BASE = "https://talhacell.taila77dbf.ts.net";
         const USERNAME = "Talha Celik";
+        let allImages = [];
+        let currentIndex = 0;
+        const batchSize = 5;
 
         // Sayfa açıldığında geçmişi otomatik getir
         window.onload = loadHistory;
@@ -96,40 +105,64 @@
             
             try {
                 const response = await fetch(`${API_BASE}/history/${encodeURIComponent(USERNAME)}`);
-                const images = await response.json();
+                allImages = await response.json();
+                currentIndex = 0;
                 grid.innerHTML = "";
                 
-                if(images.length === 0) {
+                if(allImages.length === 0) {
                     grid.innerHTML = "<div class='col-span-full text-center p-20 text-slate-500'>Henüz bir kayıt bulunamadı.</div>";
+                    document.getElementById('seeMoreContainer').classList.add('hidden');
                     return;
                 }
 
-                images.forEach(imgName => {
-                    const card = document.createElement('div');
-                    card.className = "glass-panel p-3 rounded-2xl transition-transform hover:scale-[1.02]";
-                    
-                    // Saati ayıkla (dragon-HHMMSS.png formatından)
-                    const timePart = imgName.split('-')[1]?.split('.')[0] || "000000";
-                    const formattedTime = `${timePart.substring(0,2)}:${timePart.substring(2,4)}:${timePart.substring(4,6)}`;
-
-                    card.innerHTML = `
-                        <div class="overflow-hidden rounded-xl mb-3 aspect-square bg-slate-900">
-                            <img src="${API_BASE}/outputs/${encodeURIComponent(USERNAME)}/${imgName}" 
-                                 class="w-full h-full object-cover" 
-                                 alt="Dragon Output"
-                                 onclick="window.open(this.src, '_blank')">
-                        </div>
-                        <div class="flex justify-between items-center px-1">
-                            <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${imgName}</span>
-                            <span class="text-xs font-bold text-purple-400">${formattedTime}</span>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                });
+                showNextBatch();
             } catch(e) { 
                 console.error("Hata:", e);
                 grid.innerHTML = "<div class='col-span-full text-center text-red-400'>Backend bağlantısı kurulamadı.</div>";
+                document.getElementById('seeMoreContainer').classList.add('hidden');
             }
+        }
+
+        function showNextBatch() {
+            const grid = document.getElementById('historyGrid');
+            const seeMoreContainer = document.getElementById('seeMoreContainer');
+            
+            const nextBatch = allImages.slice(currentIndex, currentIndex + batchSize);
+            
+            nextBatch.forEach(imgName => {
+                const card = document.createElement('div');
+                card.className = "glass-panel p-3 rounded-2xl transition-transform hover:scale-[1.02]";
+                
+                // Saati ayıkla (dragon-HHMMSS.png formatından)
+                const timePart = imgName.split('-')[1]?.split('.')[0] || "000000";
+                const formattedTime = `${timePart.substring(0,2)}:${timePart.substring(2,4)}:${timePart.substring(4,6)}`;
+
+                card.innerHTML = `
+                    <div class="overflow-hidden rounded-xl mb-3 aspect-square bg-slate-900">
+                        <img src="${API_BASE}/outputs/${encodeURIComponent(USERNAME)}/${imgName}" 
+                             class="w-full h-full object-cover" 
+                             alt="Dragon Output"
+                             onclick="window.open(this.src, '_blank')">
+                    </div>
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${imgName}</span>
+                        <span class="text-xs font-bold text-purple-400">${formattedTime}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            
+            currentIndex += batchSize;
+            
+            if(currentIndex < allImages.length) {
+                seeMoreContainer.classList.remove('hidden');
+            } else {
+                seeMoreContainer.classList.add('hidden');
+            }
+        }
+
+        function loadMore() {
+            showNextBatch();
         }
 
         async function generateImage() {
