@@ -1,0 +1,235 @@
+<style>
+    /* Temel Stil Ayarları */
+    header { display: flex; justify-content: flex-end; padding: 15px 30px; position: relative; }
+    .menu-toggle { font-size: 2rem; cursor: pointer; background: none; border: none; color: #555; transition: 0.3s; }
+    .side-menu { position: fixed; top: 0; right: -350px; width: 280px; height: 100%; background: #343a40; transition: 0.4s; z-index: 999; padding: 70px 20px 20px; overflow-y: auto; }
+    .side-menu.active { right: 0; box-shadow: -5px 0 15px rgba(0,0,0,0.3); }
+    .menu-item { display: block; background: #495057; color: white; text-decoration: none; padding: 12px; margin-bottom: 8px; border-radius: 5px; font-family: sans-serif; transition: 0.2s; }
+    .menu-item:hover { background: #c0392b; padding-left: 20px; }
+    .close-btn { position: absolute; top: 20px; left: 20px; color: white; font-size: 2.5rem; border: none; background: none; cursor: pointer; }
+    
+    .main-content { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 40px; text-align: center; }
+    .tarih { color: #c0392b; font-weight: bold; font-size: 1.2rem; margin-bottom: 5px; }
+    #gun-adi { color: #888; text-transform: uppercase; letter-spacing: 3px; font-size: 0.85rem; }
+    
+    .slider-container { display: flex; align-items: center; justify-content: center; max-width: 700px; width: 90%; background: white; padding: 30px 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03); }
+    #nasihat-metni { font-size: 1.4rem; line-height: 1.7; color: #2c3e50; margin-bottom: 15px; }
+    
+    .nav-btn { background: none; border: 1px solid #eee; color: #ddd; font-size: 1.5rem; cursor: pointer; border-radius: 50%; width: 45px; height: 45px; transition: 0.3s; display: flex; align-items: center; justify-content: center; }
+    .nav-btn:hover:not(:disabled) { border-color: #c0392b; color: #c0392b; }
+
+    /* Edit Modu */
+    .edit-mode { display: none; margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 10px; border: 1px solid #ddd; }
+    .edit-mode input, .edit-mode textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
+    .edit-mode button { padding: 10px 20px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+    .edit-mode button:hover { background: #34495e; }
+
+    /* --- GÖRSEL EFEKTLER (İstediğin Kısım) --- */
+    .hover-effect {
+        transition: transform 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+    }
+    .hover-effect:hover {
+        transform: scale(1.04);
+        filter: brightness(1.1);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    footer { 
+        padding: 30px; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        background: white; 
+        border-top: 1px solid #eee;
+        margin-top: 40px;
+    }
+    #di-logo { max-height: 45px; height: auto; transition: transform 0.3s ease; }
+    #di-logo:hover { transform: scale(1.1); }
+
+    .admin-area { background: #f0f0f0; padding: 15px; text-align: center; border-top: 1px solid #ddd; margin-top:20px; }
+    #admin-panel { display: none; padding: 15px; }
+    .admin-input { width: 85%; max-width: 320px; padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; }
+</style>
+
+<header><button class="menu-toggle" onclick="toggleMenu()">☰</button></header>
+
+<div class="side-menu" id="side-menu">
+    <button class="close-btn" onclick="toggleMenu()">×</button>
+    <a href="http://huseyinhilmiisik.com/" target="_blank" class="menu-item">Hüseyin Hilmi Işık</a>
+    <a href="https://hakikatkitabevi.com/" target="_blank" class="menu-item">Hakikat Kitabevi</a>
+    <a href="https://osman-unlu.com/" target="_blank" class="menu-item">Osman Ünlü</a>
+    <a href="https://namazvakti.com/" target="_blank" class="menu-item">Namaz Vakti</a>
+    <a href="https://dinimizislam.com/" target="_blank" class="menu-item">Dinimiz İslam</a>
+    <a href="https://turkiyegazetesi.com.tr/bizim-sayfa" target="_blank" class="menu-item">Bizim Sayfa</a>
+    <a href="https://youtube.com/@muziksizilahilertv" target="_blank" class="menu-item">Müziksiz İlahiler</a>
+    <a href="https://huzurpinari.com/" target="_blank" class="menu-item">Huzur Pınarı</a>
+    <a href="https://myreligionislam.com/" target="_blank" class="menu-item">My Religion Islam</a>
+    <a href="https://notrereligionislam.com/" target="_blank" class="menu-item">Notre Religion Islam</a>
+    <a href="https://serenityfountain.org/" target="_blank" class="menu-item">Serenity Fountain</a>
+    <a href="https://youtube.com/@gonulsultanlaritv" target="_blank" class="menu-item">Gönül Sultanları</a>
+</div>
+
+<div class="main-content">
+    <div class="tarih-container">
+        <div class="tarih" id="gercek-tarih"></div>
+        <div id="gun-adi"></div>
+    </div>
+    <div class="slider-container">
+        <button class="nav-btn" id="prev-btn" onclick="degistir(-1)">❮</button>
+        <div class="nasihat-box">
+            <p id="nasihat-metni" contenteditable="false">Yükleniyor...</p>
+            <div style="border-bottom: 1px solid #eee; width: 30%; margin: 10px auto;"></div>
+            <div style="font-size: 0.85rem; color: #bbb; font-style: italic;">Kaynak: Türkiye Takvimi</div>
+        </div>
+        <button class="nav-btn" id="next-btn" onclick="degistir(1)">❯</button>
+    </div>
+    <div id="sayfa-bilgi" style="margin-top: 15px; color: #ccc; font-size: 0.75rem;"></div>
+
+    <div class="admin-actions" id="admin-actions" style="display:none; margin-top: 20px; gap: 10px; justify-content: center;">
+        <button class="nav-btn" onclick="yeniMetinEkle()">+</button>
+        <button class="nav-btn" onclick="nasihatEkle()">YAYINLA</button>
+    </div>
+
+    <div style="margin-top: 45px; width: 100%; max-width: 450px;">
+        <a href="https://hakikatkitabevi.net/" target="_blank">
+            <img src="images/B000.png" class="hover-effect" style="width: 85%; height: auto;">
+        </a>
+    </div>
+
+    <div style="width: 95%; max-width: 800px; margin: 20px auto 40px;">
+        <a href="https://tgrtfm.com.tr/canli-yayin" target="_blank">
+            <img src="images/islam_ve_toplum_osman_unlu.png" class="hover-effect" style="width: 100%; border-radius: 10px;">
+        </a>
+    </div>
+</div>
+
+<footer>
+    <a href="https://dinimizislam.com/" target="_blank">
+        <img src="images/di-logo-1.png" alt="Dinimiz İslam" id="di-logo">
+    </a>
+</footer>
+
+<script>
+(function() {
+    const REPO = "talhacelikozgen/DragonWeb";
+    var bugunkuSozler = [];
+    var aktifIndex = 0;
+    var isAdmin = false;
+    var ghToken = "";
+
+    window.toggleMenu = function() {
+        document.getElementById('side-menu').classList.toggle('active');
+    };
+
+    async function veriyiYukle() {
+        const simdi = new Date();
+        const gunler = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+        const aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        const tarihEl = document.getElementById('gercek-tarih');
+        const gunEl = document.getElementById('gun-adi');
+        if (tarihEl) tarihEl.innerText = `${simdi.getDate()} ${aylar[simdi.getMonth()]} ${simdi.getFullYear()}`;
+        if (gunEl) gunEl.innerText = gunler[simdi.getDay()].toUpperCase();
+        try {
+            const response = await fetch('data/arsiv.json?t=' + Date.now());
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const veriler = await response.json();
+            const anahtar = `${String(simdi.getMonth() + 1).padStart(2, '0')}-${String(simdi.getDate()).padStart(2, '0')}`;
+            bugunkuSozler = Array.isArray(veriler[anahtar]) ? veriler[anahtar] : (veriler[anahtar] ? [veriler[anahtar]] : []);
+            goster();
+        } catch (e) {
+            const metniEl = document.getElementById('nasihat-metni');
+            if (metniEl) metniEl.innerText = "Veri çekilemedi.";
+        }
+    }
+
+    function goster() {
+        const metniEl = document.getElementById('nasihat-metni');
+        if (!metniEl) return;
+        if (bugunkuSozler.length === 0) {
+            metniEl.innerText = "Kayıt bulunamadı.";
+            return;
+        }
+        metniEl.innerText = bugunkuSozler[aktifIndex];
+        const bilgiEl = document.getElementById('sayfa-bilgi');
+        if (bilgiEl) bilgiEl.innerText = `${aktifIndex + 1} / ${bugunkuSozler.length}`;
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        if (prevBtn) prevBtn.disabled = aktifIndex === 0;
+        if (nextBtn) nextBtn.disabled = aktifIndex === bugunkuSozler.length - 1;
+        metniEl.contentEditable = isAdmin ? true : false;
+    }
+
+    window.degistir = function(yon) {
+        const metniEl = document.getElementById('nasihat-metni');
+        if (isAdmin && metniEl && bugunkuSozler[aktifIndex] !== undefined) {
+            bugunkuSozler[aktifIndex] = metniEl.innerText.trim();
+        }
+        aktifIndex += yon;
+        goster();
+    };
+
+    window.adminModunuAc = function(token) {
+        ghToken = token;
+        isAdmin = true;
+        const adminActions = document.getElementById('admin-actions');
+        if (adminActions) adminActions.style.display = 'flex';
+        goster();
+    };
+
+    window.yeniMetinEkle = function() {
+        bugunkuSozler.unshift('');
+        aktifIndex = 0;
+        goster();
+        const metniEl = document.getElementById('nasihat-metni');
+        if (metniEl) metniEl.focus();
+    };
+
+    window.nasihatEkle = async function() {
+        const metniEl = document.getElementById('nasihat-metni');
+        const metin = metniEl ? metniEl.innerText.trim() : '';
+        if (!metin) return alert("Metin gerekli!");
+        if (!ghToken) return alert("Token gerekli!");
+
+        if (bugunkuSozler.length === 0) {
+            bugunkuSozler = [metin];
+            aktifIndex = 0;
+        } else {
+            bugunkuSozler[aktifIndex] = metin;
+        }
+
+        try {
+            const url = `https://api.github.com/repos/${REPO}/contents/data/arsiv.json`;
+            const res = await fetch(url, { headers: { Authorization: `token ${ghToken}` } });
+            const fileData = await res.json();
+
+            let decoded = decodeURIComponent(atob(fileData.content).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+            let content = JSON.parse(decoded);
+
+            const simdi = new Date();
+            const tarih = `${String(simdi.getMonth() + 1).padStart(2, '0')}-${String(simdi.getDate()).padStart(2, '0')}`;
+            content[tarih] = bugunkuSozler;
+
+            const base64 = btoa(encodeURIComponent(JSON.stringify(content, null, 4)).replace(/%([0-9A-F]{2})/g, (m, p) => String.fromCharCode('0x' + p)));
+            const update = await fetch(url, {
+                method: "PUT",
+                headers: { Authorization: `token ${ghToken}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ message: `${tarih} güncellendi`, content: base64, sha: fileData.sha })
+            });
+
+            if (update.ok) {
+                alert("Başarılı!");
+                aktifIndex = 0;
+                veriyiYukle();
+            } else {
+                alert("Hata!");
+            }
+        } catch (e) {
+            alert("Hata!");
+        }
+    };
+
+    veriyiYukle();
+})();
+</script>

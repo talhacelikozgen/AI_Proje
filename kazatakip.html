@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaza Namazı Takip</title>
+    <style>
+        :root { --primary: #00adb5; --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --accent: #00ffd4; --warning: #ff9800; --danger: #ff4d4d; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .container { background-color: var(--card); padding: 20px; border-radius: 15px; width: 100%; max-width: 700px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+        .section { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
+        h3 { font-size: 0.85em; color: #888; margin: 0 0 10px 0; text-transform: uppercase; }
+        
+        .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .analysis-box { background: #0f1a1a; border-left: 3px solid var(--primary); padding: 12px; border-radius: 6px; color: var(--accent); font-size: 0.85em; line-height: 1.5; }
+        .full-width { grid-column: 1 / -1; border-left-color: var(--warning); background: #1a160f; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+        .stat-card { background: #2d2d2d; padding: 12px; border-radius: 10px; text-align: center; border-bottom: 2px solid var(--primary); }
+        .stat-card h4 { margin: 0; font-size: 0.75em; color: #888; }
+        .stat-card p { margin: 8px 0; font-size: 1.1em; font-weight: bold; }
+        
+        .progress-bar { height: 5px; background: #111; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: 0.8s; }
+        
+        .form-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        input, select { background: #333; color: white; border: 1px solid #444; padding: 12px; border-radius: 8px; outline: none; flex: 1; }
+        .btn-add { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 2; }
+        .btn-sub { background: var(--danger); color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; font-size: 0.8em; }
+        
+        .footer-btns { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-util { background: #3a3a3a; color: #eee; font-size: 0.75em; flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #444; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        
+        /* Gizli dosya girişi */
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Kaza Namazı Takip</h2>
+
+    <div class="section">
+        <h3>⚙️ Hedef Ayarı</h3>
+        <input type="number" id="hedefInput" onchange="hedefGuncelle()" style="width: 100%; box-sizing: border-box;" placeholder="Toplam Borç Gün Sayısını Girin">
+    </div>
+
+    <div class="section">
+        <h3>📊 Detaylı Analiz</h3>
+        <div class="analysis-grid" id="analizGrid"></div>
+    </div>
+
+    <div class="section">
+        <div id="stats" class="stat-grid"></div>
+    </div>
+
+    <div class="section">
+        <h3>📥 Namaz Ekle / Çıkar</h3>
+        <div class="form-group">
+            <select id="vakit">
+                <option value="Sabah">Sabah</option><option value="Öğle">Öğle</option>
+                <option value="İkindi">İkindi</option><option value="Akşam">Akşam</option>
+                <option value="Yatsı">Yatsı</option><option value="Vitir">Vitir</option>
+            </select>
+            <input type="number" id="miktar" value="1">
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-add" onclick="islem(1)">✅ Ekle</button>
+            <button class="btn-sub" onclick="islem(-1)">❌ Sil</button>
+        </div>
+    </div>
+
+    <div class="section" style="border-top: 2px solid var(--primary);">
+        <h3>🛡️ Veri Yedekleme & Aktarım</h3>
+        <div class="footer-btns">
+            <button class="btn-util" onclick="jsonIndir()">💾 Yedeği İndir</button>
+            <button class="btn-util" onclick="document.getElementById('fileInput').click()">📂 Dosyadan Yükle</button>
+            <button class="btn-util" onclick="veriKopyala()">📋 Metni Kopyala</button>
+        </div>
+        <input type="file" id="fileInput" accept=".json" onchange="jsonOku(event)">
+        
+        <center><button onclick="sifirla()" style="background:transparent; color:#555; border:none; cursor:pointer; font-size:0.75em; margin-top:15px; text-decoration:underline;">Sistemi Sıfırla</button></center>
+    </div>
+</div>
+
+<script>
+    let data = JSON.parse(localStorage.getItem('kazaTakipVerisi')) || {
+        kayitlar: { Sabah: 0, Öğle: 0, İkindi: 0, Akşam: 0, Yatsı: 0, Vitir: 0 },
+        baslangicTarihi: new Date().getTime(),
+        toplamHedefGun: 0
+    };
+
+    function arayuzGuncelle() {
+        const statsDiv = document.getElementById('stats');
+        const analizGrid = document.getElementById('analizGrid');
+        document.getElementById('hedefInput').value = data.toplamHedefGun || "";
+        statsDiv.innerHTML = ''; analizGrid.innerHTML = '';
+        
+        const H = data.toplamHedefGun || 1;
+        const gecen = Math.max(Math.ceil((new Date().getTime() - data.baslangicTarihi) / 86400000), 1);
+        let toplam = 0;
+
+        for (let v in data.kayitlar) {
+            let k = data.kayitlar[v]; toplam += k;
+            let p = Math.min((k / H) * 100, 100);
+            statsDiv.innerHTML += `<div class="stat-card"><h4>${v}</h4><p>${k}/${H}</p><div class="progress-bar"><div class="progress-fill" style="width:${data.toplamHedefGun > 0 ? p : 0}%"></div></div></div>`;
+            
+            let hiz = k / gecen;
+            let box = `<div class="analysis-box"><strong>${v}:</strong><br>`;
+            if (k > 0 && data.toplamHedefGun > 0) {
+                let kalan = Math.ceil((H - k) / hiz);
+                let bitis = new Date(); bitis.setDate(bitis.getDate() + kalan);
+                box += `Hız: ${hiz.toFixed(2)} | Bitiş: ${bitis.toLocaleDateString('tr-TR')}`;
+            } else { box += `Veri bekleniyor...`; }
+            analizGrid.innerHTML += box + `</div>`;
+        }
+
+        let gHiz = (toplam / 6) / gecen;
+        let gKalan = (toplam > 0 && data.toplamHedefGun > 0) ? Math.ceil(((H * 6) - toplam) / (toplam / gecen)) : 0;
+        let gBitis = new Date(); gBitis.setDate(gBitis.getDate() + gKalan);
+
+        analizGrid.insertAdjacentHTML('afterbegin', `<div class="analysis-box full-width"><strong>🌍 GENEL DURUM:</strong><br>Hız: ${gHiz.toFixed(2)} | Kalan: ${gKalan} gün | Bitiş: ${toplam > 0 ? gBitis.toLocaleDateString('tr-TR') : '---'}</div>`);
+        localStorage.setItem('kazaTakipVerisi', JSON.stringify(data));
+    }
+
+    function islem(yon) {
+        if (data.toplamHedefGun <= 0) { alert("Lütfen hedef gün sayısını girin!"); return; }
+        const v = document.getElementById('vakit').value;
+        const m = parseInt(document.getElementById('miktar').value) * yon;
+        if (isNaN(m)) return;
+        data.kayitlar[v] = Math.max(0, data.kayitlar[v] + m);
+        arayuzGuncelle();
+    }
+
+    function hedefGuncelle() {
+        data.toplamHedefGun = parseInt(document.getElementById('hedefInput').value) || 0;
+        arayuzGuncelle();
+    }
+
+    function jsonIndir() {
+        const d = new Date();
+        const tarihStr = `${d.getDate()}_${d.getMonth()+1}_${d.getFullYear()}`;
+        const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `kaza_yedek_${tarihStr}.json`;
+        a.click();
+    }
+
+    function jsonOku(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const yuklenen = JSON.parse(e.target.result);
+                if (yuklenen.kayitlar) {
+                    data = yuklenen;
+                    arayuzGuncelle();
+                    alert("Yedek başarıyla yüklendi!");
+                }
+            } catch(err) { alert("Geçersiz dosya formatı!"); }
+        };
+        reader.readAsText(file);
+    }
+
+    function veriKopyala() {
+        navigator.clipboard.writeText(JSON.stringify(data)).then(() => alert("Veriler metin olarak kopyalandı!"));
+    }
+
+    function sifirla() {
+        if(confirm("DİKKAT: Tüm verileriniz kalıcı olarak silinecektir. Emin misiniz?")) {
+            localStorage.removeItem('kazaTakipVerisi');
+            location.reload();
+        }
+    }
+
+    arayuzGuncelle();
+</script>
+</body>
+</html>

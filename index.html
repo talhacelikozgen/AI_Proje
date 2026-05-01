@@ -29,7 +29,10 @@
 
     <div class="max-w-6xl mx-auto">
         <div class="flex justify-between items-center mb-10">
-            <h1 class="text-4xl font-black uppercase tracking-tighter dragon-text-gradient">DRAGON AI v3</h1>
+            <div>
+                <h1 class="text-4xl font-black uppercase tracking-tighter dragon-text-gradient">DRAGON AI v3</h1>
+                <p class="text-sm text-slate-400 mt-2">Metin tabanlı üretim ve görsel referanslı dönüşüm aynı panelde.</p>
+            </div>
             <div class="flex items-center gap-4">
                 <div id="connectionStatus" class="text-slate-400 text-sm font-medium border-l border-slate-700 pl-4">
                     SİSTEM: <span class="text-emerald-400">BAĞLI (LOCAL)</span>
@@ -37,43 +40,82 @@
             </div>
         </div>
 
+        <div class="flex flex-wrap gap-3 mb-8">
+            <button id="txtModeBtn" onclick="setMode('txt')" class="px-5 py-3 rounded-2xl font-semibold bg-white/15 border border-purple-400 text-white transition-all">Metinden Üret</button>
+            <button id="imgModeBtn" onclick="setMode('img')" class="px-5 py-3 rounded-2xl font-semibold bg-slate-900 border border-slate-700 text-slate-300 transition-all hover:bg-slate-800">Görselden Dönüştür</button>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <!-- Kontrol Paneli -->
             <div class="lg:col-span-4 space-y-6">
                 <div class="glass-panel p-6 rounded-3xl shadow-2xl">
-                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-                        <span class="w-2 h-6 dragon-gradient rounded-full"></span>
-                        Üretim Emri
-                    </h2>
-                    <textarea id="prompt" rows="5" 
-                        class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl p-4 mb-4 outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none text-white" 
-                        placeholder="Hayalindeki ejderhayı veya tasarımı anlat..."></textarea>
-                    
-                    <button onclick="generateImage()" id="genBtn" 
-                        class="w-full dragon-gradient py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-all active:scale-95 shadow-lg shadow-purple-500/20">
-                        TASARLA VE KAYDET
-                    </button>
-                    
+                    <div id="txtPanel">
+                        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                            <span class="w-2 h-6 dragon-gradient rounded-full"></span>
+                            Metinden Üret
+                        </h2>
+                        <textarea id="prompt" rows="5" 
+                            class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl p-4 mb-4 outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none text-white" 
+                            placeholder="Hayalindeki ejderhayı veya tasarımı anlat..."></textarea>
+                        <button onclick="generateImage()" id="genBtn" 
+                            class="w-full dragon-gradient py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-all active:scale-95 shadow-lg shadow-purple-500/20">
+                            TASARLA VE KAYDET
+                        </button>
+                    </div>
+
+                    <div id="imgPanel" class="hidden">
+                        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                            <span class="w-2 h-6 dragon-gradient rounded-full"></span>
+                            Görselden Dönüştür
+                        </h2>
+                        <textarea id="imgPrompt" rows="4" 
+                            class="w-full bg-slate-900/50 border border-slate-700 rounded-2xl p-4 mb-4 outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none text-white" 
+                            placeholder="Bu görsel üzerinde ne tür bir dönüşüm istersin? Örneğin: renkleri fantastik yap, dokuyu değiştir..."></textarea>
+
+                        <div class="space-y-2 mt-2">
+                            <div class="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <span>Değişim Gücü (Strength)</span>
+                                <span id="strengthVal" class="text-purple-400">0.50</span>
+                            </div>
+                            <input type="range" id="strengthRange" min="0.1" max="1.0" step="0.05" value="0.5" 
+                                class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                oninput="document.getElementById('strengthVal').innerText = this.value">
+                            <p class="text-[10px] text-slate-500 italic">Düşük: Orijinale sadık | Yüksek: Yeni tasarım</p>
+                        </div>
+
+                        <div class="mt-4">
+                            <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="updateFileName()">
+                            <button onclick="document.getElementById('imageInput').click()" 
+                                class="w-full bg-slate-800 border border-slate-700 py-3 rounded-2xl text-sm font-medium hover:bg-slate-700 transition-all">
+                                REFERANS GÖRSEL SEÇ (Opsiyonel)
+                            </button>
+                            <div id="fileName" class="text-[10px] text-emerald-400 mt-2 text-center">Henüz bir görsel seçilmedi.</div>
+                        </div>
+
+                        <button onclick="generateImageFromImage()" id="imgGenBtn" 
+                            class="w-full dragon-gradient py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-all active:scale-95 shadow-lg shadow-purple-500/20 mt-6">
+                            GÖRSELİ DÖNÜŞTÜR
+                        </button>
+                    </div>
+
                     <div id="statusBox" class="mt-4 text-center text-sm text-slate-400 hidden">
                         <div class="flex items-center justify-center gap-2">
                             <svg class="animate-spin h-4 w-4 text-purple-500" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            <span>GPU Çalışıyor... (VRAM Temizleniyor)</span>
+                            <span id="statusMessage">GPU Çalışıyor... (VRAM Temizleniyor)</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="p-6 bg-purple-500/10 border border-purple-500/20 rounded-2xl">
                     <p class="text-xs text-purple-300 leading-relaxed">
-                        <b>Dinamik Senkronizasyon:</b> Görseller doğrudan <code>E:\Dragon_AI_Depo</code> yoluna kaydedilir ve GitHub güncellemesine gerek kalmadan anında burada listelenir.
+                        <b>Canlı Depo:</b> Üretilen görseller doğrudan sisteme kaydedilir ve buradan yönetilebilir.
                     </p>
                 </div>
             </div>
 
-            <!-- Dinamik Geçmiş Grid -->
             <div class="lg:col-span-8 space-y-6">
                 <div class="flex items-center justify-between">
                     <h2 class="text-2xl font-bold">Dragon Depo (Canlı)</h2>
-                    <button onclick="loadHistory()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl transition-all">
+                    <button onclick="refreshHistory()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-xl transition-all">
                         <span>Verileri Yenile</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M15.24 15.24A8 8 0 114.88 7.05L4 9" /></svg>
                     </button>
@@ -82,68 +124,111 @@
                 <div id="historyGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto max-h-[75vh] pr-2">
                     <!-- Dinamik içerik buraya gelecek -->
                 </div>
+
+                <div class="mt-6 text-center">
+                    <button id="showMoreBtn" onclick="showMore()" class="text-slate-400 hover:text-white text-sm flex items-center gap-2 bg-slate-800 px-6 py-3 rounded-xl transition-all mx-auto">
+                        <span>DAHA FAZLA GÖSTER (+5)</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Senin Tailscale ve API Ayarların
-        const API_BASE = "https://talhacell.taila77dbf.ts.net"; // Artık tail adresi yerine kendi domainini kullanıyorsun
-        const USERNAME = "Talha Celik";
-        let promptsCache = null;
+        const API_BASE = "http://127.0.0.1:8000";
+        const USERNAME = "DragonUser";
+        const displayLimit = 5;
+        let currentOffset = 0;
+        let totalImages = 0;
 
-        // Sayfa açıldığında verileri çek
-        window.onload = loadHistory;
+        window.onload = () => {
+            setMode('txt');
+            refreshHistory();
+        };
+
+        function setMode(mode) {
+            document.getElementById('txtPanel').classList.toggle('hidden', mode !== 'txt');
+            document.getElementById('imgPanel').classList.toggle('hidden', mode !== 'img');
+
+            const active = 'px-5 py-3 rounded-2xl font-semibold bg-white/15 border border-purple-400 text-white transition-all';
+            const inactive = 'px-5 py-3 rounded-2xl font-semibold bg-slate-900 border border-slate-700 text-slate-300 transition-all hover:bg-slate-800';
+            document.getElementById('txtModeBtn').className = mode === 'txt' ? active : inactive;
+            document.getElementById('imgModeBtn').className = mode === 'img' ? active : inactive;
+        }
+
+        function updateFileName() {
+            const fileInput = document.getElementById('imageInput');
+            const label = document.getElementById('fileName');
+            if (fileInput.files.length === 0) {
+                label.innerText = 'Henüz bir görsel seçilmedi.';
+                return;
+            }
+            label.innerText = `Seçilen dosya: ${fileInput.files[0].name}`;
+        }
+
+        function refreshHistory() {
+            currentOffset = 0;
+            loadHistory();
+        }
 
         async function loadHistory() {
             const grid = document.getElementById('historyGrid');
             const statusText = document.querySelector('#connectionStatus span');
             
             try {
-                // 1. Önce prompt.json'u canlı çek (Cache temizleyerek)
-                const pResponse = await fetch(`${API_BASE}/outputs/Talha%20Celik/prompt.json?t=${Date.now()}`);
-                promptsCache = await pResponse.json();
+                const response = await fetch(`${API_BASE}/history/${encodeURIComponent(USERNAME)}?limit=${displayLimit}&offset=${currentOffset}`);
+                const data = response.ok ? await response.json() : { total: 0, items: [] };
+                const images = data.items || [];
+                totalImages = data.total || 0;
 
-                // 2. Klasördeki güncel dosya listesini çek
-                const response = await fetch(`${API_BASE}/history/${encodeURIComponent(USERNAME)}`);
-                const images = await response.json();
-                
-                grid.innerHTML = "";
+                if (currentOffset === 0) {
+                    grid.innerHTML = "";
+                }
+
                 statusText.className = "text-emerald-400";
                 statusText.innerText = "BAĞLI (LOCAL)";
 
-                if(images.length === 0) {
+                if (images.length === 0 && currentOffset === 0) {
                     grid.innerHTML = "<div class='col-span-full text-center p-20 text-slate-500 italic'>Depoda henüz ejderha yok...</div>";
+                    document.getElementById('showMoreBtn').style.display = 'none';
                     return;
                 }
 
-                // Görselleri listele
-                images.forEach(imgName => {
-                    const promptText = promptsCache[imgName] || "Prompt bilgisi yerel dosyada bulunamadı.";
+                images.forEach(image => {
+                    const promptText = image.prompt || "Prompt bilgisi yerel dosyada bulunamadı.";
                     const card = document.createElement('div');
                     card.className = "glass-panel p-3 rounded-2xl transition-all hover:border-purple-500/50 group";
-                    
-                    // Zaman bilgisini dosya isminden çek
-                    const parts = imgName.replace('dragon-', '').replace('.png', '').split('-');
+                    const parts = image.filename.replace('dragon-', '').replace('.png', '').split('-');
                     const timeStr = parts[3] ? `${parts[3].substring(0,2)}:${parts[3].substring(2,4)}` : "00:00";
+                    const imageUrl = image.image_url.startsWith('http') ? image.image_url : `${API_BASE}${image.image_url}`;
 
                     card.innerHTML = `
                         <div class="overflow-hidden rounded-xl mb-3 aspect-square bg-slate-900 relative">
-                            <img src="${API_BASE}/outputs/Talha%20Celik/${imgName}" 
+                            <img src="${imageUrl}" loading="lazy"
                                  class="w-full h-full object-cover cursor-zoom-in group-hover:scale-110 transition-transform duration-500" 
                                  onclick="window.open(this.src, '_blank')">
                             <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold text-purple-400">
                                 ${timeStr}
                             </div>
                         </div>
-                        <div class="px-1">
+                        <div class="px-1 space-y-2">
                             <p class="text-xs text-slate-300 line-clamp-2 italic font-light cursor-pointer" onclick="togglePrompt(this)" title="Tam metin için tıkla">"${promptText}"</p>
+                            <button onclick="deleteImage('${image.filename}')" class="w-full bg-rose-500/10 border border-rose-500/20 text-rose-200 text-[11px] uppercase tracking-widest py-2 rounded-2xl hover:bg-rose-500/15 transition-all">
+                                SİL
+                            </button>
                         </div>
                     `;
                     grid.appendChild(card);
                 });
 
-            } catch(e) {
+                const showMoreBtn = document.getElementById('showMoreBtn');
+                if (currentOffset + images.length < totalImages) {
+                    showMoreBtn.style.display = 'flex';
+                } else {
+                    showMoreBtn.style.display = 'none';
+                }
+            } catch (e) {
                 console.error("Bağlantı hatası:", e);
                 statusText.className = "text-red-400";
                 statusText.innerText = "BAĞLANTI KOPUK";
@@ -151,17 +236,22 @@
             }
         }
 
+        function showMore() {
+            currentOffset += displayLimit;
+            loadHistory();
+        }
+
         async function generateImage() {
             const promptInput = document.getElementById('prompt');
             const btn = document.getElementById('genBtn');
             const statusBox = document.getElementById('statusBox');
 
-            if(!promptInput.value) return alert("Talha, üretim için bir tanım girmelisin.");
+            if(!promptInput.value) return alert("Üretim için bir tanım girmelisin.");
 
-            // Arayüzü kilitle
             btn.disabled = true;
             btn.innerText = "İŞLENİYOR...";
             statusBox.classList.remove('hidden');
+            document.getElementById('statusMessage').innerText = 'Metinden üretim yapılıyor...';
 
             try {
                 const response = await fetch(`${API_BASE}/generate`, {
@@ -172,10 +262,10 @@
                 
                 if(response.ok) {
                     promptInput.value = "";
-                    // Üretim bittikten 1 saniye sonra listeyi yenile
                     setTimeout(loadHistory, 1000);
                 } else {
-                    alert("VRAM veya Sunucu Hatası!");
+                    const error = await response.json().catch(() => null);
+                    alert(error?.detail || "VRAM veya Sunucu Hatası!");
                 }
             } catch (e) {
                 alert("Sunucuya ulaşılamadı. main.py çalışıyor mu?");
@@ -183,6 +273,73 @@
                 btn.disabled = false;
                 btn.innerText = "TASARLA VE KAYDET";
                 statusBox.classList.add('hidden');
+            }
+        }
+
+        async function generateImageFromImage() {
+            const promptInput = document.getElementById('imgPrompt');
+            const fileInput = document.getElementById('imageInput');
+            const strength = parseFloat(document.getElementById('strengthRange').value);
+            const btn = document.getElementById('imgGenBtn');
+            const statusBox = document.getElementById('statusBox');
+
+            if (!promptInput.value.trim()) return alert("Dönüşüm için bir kısa açıklama girmelisin.");
+            if (!fileInput.files.length) return alert("Lütfen bir referans görsel seç.");
+
+            btn.disabled = true;
+            btn.innerText = "DÖNÜŞTÜRÜLÜYOR...";
+            statusBox.classList.remove('hidden');
+            document.getElementById('statusMessage').innerText = 'Görsel dönüşümü yapılıyor...';
+
+            const formData = new FormData();
+            formData.append('prompt', promptInput.value);
+            formData.append('user', USERNAME);
+            formData.append('strength', strength);
+            formData.append('image', fileInput.files[0]);
+
+            try {
+                const response = await fetch(`${API_BASE}/generate-from-image`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    promptInput.value = "";
+                    fileInput.value = "";
+                    document.getElementById('fileName').innerText = 'Henüz bir görsel seçilmedi.';
+                    setTimeout(loadHistory, 1000);
+                } else {
+                    const error = await response.json().catch(() => null);
+                    alert(error?.detail || 'Dönüştürme sırasında bir hata oluştu.');
+                }
+            } catch (e) {
+                alert('Sunucuya ulaşılamadı. main.py çalışıyor mu?');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'GÖRSELİ DÖNÜŞTÜR';
+                statusBox.classList.add('hidden');
+            }
+        }
+
+        async function deleteImage(filename) {
+            if (!filename) return;
+            if (!confirm('Bu görseli ve ilişkili bilgileri silmek istediğinizden emin misiniz?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename, user: USERNAME }),
+                });
+
+                if (response.ok) {
+                    setTimeout(loadHistory, 500);
+                } else {
+                    const error = await response.json().catch(() => null);
+                    alert(error?.detail || 'Silme işlemi sırasında bir hata oluştu.');
+                }
+            } catch (e) {
+                alert('Sunucuya ulaşılamadı. Silme işlemi gerçekleştirilemiyor.');
             }
         }
 
