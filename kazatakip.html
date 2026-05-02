@@ -40,6 +40,7 @@
 
 <div class="container">
     <h2>Kaza Namazı Takip</h2>
+    <p id="userBadge" style="margin-bottom:12px; text-align:center; color:#aaa; font-size:0.95em;"></p>
 
     <div class="section">
         <h3>⚙️ Hedef Ayarı</h3>
@@ -85,18 +86,62 @@
 </div>
 
 <script>
-    let data = JSON.parse(localStorage.getItem('kazaTakipVerisi')) || {
+    const API_BASE = "http://127.0.0.1:8000";
+    const params = new URLSearchParams(window.location.search);
+    const USERNAME = decodeURIComponent(params.get('user') || '');
+    let data = {
         kayitlar: { Sabah: 0, Öğle: 0, İkindi: 0, Akşam: 0, Yatsı: 0, Vitir: 0 },
         baslangicTarihi: new Date().getTime(),
         toplamHedefGun: 0
     };
+
+    function showStatus(message, isError = false) {
+        const badge = document.getElementById('userBadge');
+        if (!badge) return;
+        badge.innerText = message;
+        badge.style.color = isError ? '#ff6b6b' : '#aaa';
+    }
+
+    async function loadKazaData() {
+        if (!USERNAME) {
+            showStatus('Kullanıcı bilgisi eksik. Lütfen giriş sayfasından erişin.', true);
+            return;
+        }
+        showStatus(`Girişli kullanıcı: ${USERNAME}`);
+        try {
+            const response = await fetch(`${API_BASE}/kaza-takip/${encodeURIComponent(USERNAME)}`);
+            if (response.ok) {
+                const body = await response.json();
+                if (body.records) {
+                    data = body.records;
+                }
+            }
+        } catch (e) {
+            console.warn('Kaza takibi yüklenemedi:', e);
+            showStatus('Veri yüklenemedi, çevrimdışı modda çalışılıyor.', true);
+        }
+        arayuzGuncelle();
+    }
+
+    async function saveKazaData() {
+        if (!USERNAME) return;
+        try {
+            await fetch(`${API_BASE}/kaza-takip/${encodeURIComponent(USERNAME)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+        } catch (e) {
+            console.warn('Kayıt sırasında hata:', e);
+        }
+    }
 
     function arayuzGuncelle() {
         const statsDiv = document.getElementById('stats');
         const analizGrid = document.getElementById('analizGrid');
         document.getElementById('hedefInput').value = data.toplamHedefGun || "";
         statsDiv.innerHTML = ''; analizGrid.innerHTML = '';
-        
+
         const H = data.toplamHedefGun || 1;
         const gecen = Math.max(Math.ceil((new Date().getTime() - data.baslangicTarihi) / 86400000), 1);
         let toplam = 0;
@@ -105,7 +150,7 @@
             let k = data.kayitlar[v]; toplam += k;
             let p = Math.min((k / H) * 100, 100);
             statsDiv.innerHTML += `<div class="stat-card"><h4>${v}</h4><p>${k}/${H}</p><div class="progress-bar"><div class="progress-fill" style="width:${data.toplamHedefGun > 0 ? p : 0}%"></div></div></div>`;
-            
+
             let hiz = k / gecen;
             let box = `<div class="analysis-box"><strong>${v}:</strong><br>`;
             if (k > 0 && data.toplamHedefGun > 0) {
@@ -121,7 +166,7 @@
         let gBitis = new Date(); gBitis.setDate(gBitis.getDate() + gKalan);
 
         analizGrid.insertAdjacentHTML('afterbegin', `<div class="analysis-box full-width"><strong>🌍 GENEL DURUM:</strong><br>Hız: ${gHiz.toFixed(2)} | Kalan: ${gKalan} gün | Bitiş: ${toplam > 0 ? gBitis.toLocaleDateString('tr-TR') : '---'}</div>`);
-        localStorage.setItem('kazaTakipVerisi', JSON.stringify(data));
+        saveKazaData();
     }
 
     function islem(yon) {
@@ -171,12 +216,16 @@
 
     function sifirla() {
         if(confirm("DİKKAT: Tüm verileriniz kalıcı olarak silinecektir. Emin misiniz?")) {
-            localStorage.removeItem('kazaTakipVerisi');
-            location.reload();
+            data = {
+                kayitlar: { Sabah: 0, Öğle: 0, İkindi: 0, Akşam: 0, Yatsı: 0, Vitir: 0 },
+                baslangicTarihi: new Date().getTime(),
+                toplamHedefGun: 0
+            };
+            arayuzGuncelle();
         }
     }
 
-    arayuzGuncelle();
+    loadKazaData();
 </script>
 </body>
 </html>

@@ -3,9 +3,10 @@ import os
 import datetime
 import json
 import gc  # Bellek temizliği için şart
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, EulerAncestralDiscreteScheduler
 from pydantic import BaseModel
 import uvicorn
@@ -21,6 +22,7 @@ os.environ["SYCL_CACHE_PERSISTENT"] = "1"
 # Klasör Yolları
 BASE_DIR = r"C:\AI_Proje"
 OUTPUT_DIR = r"E:\Dragon_AI_Depo\Outputs"
+IMAGES_DIR = os.path.join(BASE_DIR, "images")
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -31,6 +33,29 @@ def get_user_dir(user: str):
     user_dir = os.path.join(OUTPUT_DIR, safe_user)
     os.makedirs(user_dir, exist_ok=True)
     return user_dir, safe_user
+
+
+def get_kaza_path(user: str):
+    user_dir, _ = get_user_dir(user)
+    return os.path.join(user_dir, "kaza_takip.json")
+
+
+def load_kaza_records(user: str):
+    path = get_kaza_path(user)
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {
+        "kayitlar": {"Sabah": 0, "Öğle": 0, "İkindi": 0, "Akşam": 0, "Yatsı": 0, "Vitir": 0},
+        "baslangicTarihi": datetime.datetime.now().timestamp() * 1000,
+        "toplamHedefGun": 0
+    }
+
+
+def save_kaza_records(user: str, data):
+    path = get_kaza_path(user)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 # --- 2. MODEL YÜKLEME VE OPTİMİZASYON ---
 print("Dragon AI v3: SDXL Modeli Hazırlanıyor...")
@@ -83,6 +108,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
+# Eğer resimler başka bir diskte veya klasördeyse yolu direkt yazabilirsin:
+app.mount("/images", StaticFiles(directory=r"E:\Dragon_AI_Depo\images"), name="images")
+
+@app.get("/index.html")
+async def get_index():
+    return FileResponse(os.path.join(BASE_DIR, "index.html"))
+
+@app.get("/kazatakip.html")
+async def get_kaza():
+    return FileResponse(os.path.join(BASE_DIR, "kazatakip.html"))
+
+@app.get("/dinim.html")
+async def get_dinim():
+    # Portal'da src="dinim.html" olarak çağrılmış
+    return FileResponse(os.path.join(BASE_DIR, "dinim.html"))
+
 @app.get("/outputs/{user}/{file_path:path}")
 async def serve_output(user: str, file_path: str):
     user_dir, _ = get_user_dir(user)
@@ -97,10 +139,12 @@ async def serve_output(user: str, file_path: str):
     )
 
 @app.get("/")
-async def read_index():
-
-    index_path = os.path.join(BASE_DIR, "index.html")
-    return FileResponse(index_path) if os.path.exists(index_path) else {"error": "index.html bulunamadı!"}
+async def read_portal():
+    portal_path = os.path.join(BASE_DIR, "main_tab.html") 
+    if os.path.exists(portal_path):
+        return FileResponse(portal_path)
+    else:
+        return {"error": "Ana portal dosyası (main_tab.html) bulunamadı!"}
 
 # --- 4. ÜRETİM VE TEMİZLİK MANTIĞI ---
 class GenRequest(BaseModel):
@@ -264,6 +308,19 @@ async def history(user: str, limit: int = 5, offset: int = 0):
         })
 
     return {"total": total, "items": history}
+
+
+@app.get("/kaza-takip/{user}")
+async def get_kaza_takip(user: str):
+    return {"records": load_kaza_records(user)}
+
+
+@app.post("/kaza-takip/{user}")
+async def save_kaza_takip(user: str, payload: dict = Body(...)):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Geçersiz veri formatı.")
+    save_kaza_records(user, payload)
+    return {"status": "saved", "records": payload}
 
 
 if __name__ == "__main__":

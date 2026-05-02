@@ -137,7 +137,8 @@
 
     <script>
         const API_BASE = "http://127.0.0.1:8000";
-        const USERNAME = "DragonUser";
+        const urlParams = new URLSearchParams(window.location.search);
+        const USERNAME = decodeURIComponent(urlParams.get('user') || 'DragonUser');
         const displayLimit = 5;
         let currentOffset = 0;
         let totalImages = 0;
@@ -177,7 +178,13 @@
             const statusText = document.querySelector('#connectionStatus span');
             
             try {
-                const response = await fetch(`${API_BASE}/history/${encodeURIComponent(USERNAME)}?limit=${displayLimit}&offset=${currentOffset}`);
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`${API_BASE}/history/${encodeURIComponent(USERNAME)}?limit=${displayLimit}&offset=${currentOffset}`, 
+                    { signal: controller.signal });
+                clearTimeout(timeout);
+                
                 const data = response.ok ? await response.json() : { total: 0, items: [] };
                 const images = data.items || [];
                 totalImages = data.total || 0;
@@ -206,7 +213,7 @@
                     card.innerHTML = `
                         <div class="overflow-hidden rounded-xl mb-3 aspect-square bg-slate-900 relative">
                             <img src="${imageUrl}" loading="lazy"
-                                 class="w-full h-full object-cover cursor-zoom-in group-hover:scale-110 transition-transform duration-500" 
+                                 class="w-full h-full object-cover cursor-zoom-in group-hover:scale-110 transition-transform duration-500"
                                  onclick="window.open(this.src, '_blank')">
                             <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold text-purple-400">
                                 ${timeStr}
