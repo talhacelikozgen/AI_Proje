@@ -22,7 +22,6 @@ os.environ["SYCL_CACHE_PERSISTENT"] = "1"
 # Klasör Yolları
 BASE_DIR = r"C:\AI_Proje"
 OUTPUT_DIR = r"E:\Dragon_AI_Depo\Outputs"
-IMAGES_DIR = os.path.join(BASE_DIR, "images")
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR, exist_ok=True)

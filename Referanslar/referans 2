@@ -1,8 +1,0 @@
-from diffusers import StableDiffusionXLImg2ImgPipeline
-
-# Mevcut pipe'ını buna dönüştürebilirsin veya ikisini birden yükleyebilirsin
-pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
-    model_id, 
-    torch_dtype=torch.float16, 
-    variant="fp16"
-).to("xpu")
