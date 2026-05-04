@@ -5,6 +5,7 @@ import json
 import gc  # Bellek temizliği için şart
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from diffusers import StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, EulerAncestralDiscreteScheduler
@@ -105,6 +106,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"],  # Tailscale Funnel için tüm host'lara izin ver
 )
 
 app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
@@ -323,5 +329,13 @@ async def save_kaza_takip(user: str, payload: dict = Body(...)):
 
 
 if __name__ == "__main__":
-    # Uvicorn için çalışan en stabil ayarlar
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    print("Uvicorn başlıyor...")
+    # Uvicorn için proxy header desteği ile çalışan ayarlar
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000, 
+        proxy_headers=True, 
+        forwarded_allow_ips="*", 
+        log_level="info"
+    )

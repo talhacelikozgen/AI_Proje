@@ -16,7 +16,8 @@ set SYCL_CACHE_PERSISTENT=1
 
 echo.
 echo [3/3] Dragon AI Backend Baslatiliyor...
-echo Sunucu Adresi: http://100.106.94.121:8000
+echo Yerel Adres: http://127.0.0.1:8000
+echo Tailscale Funnel: https://talhacell.taila77dbf.ts.net/
 echo.
 
 :: Proje dizinine git ve sunucuyu calistir
